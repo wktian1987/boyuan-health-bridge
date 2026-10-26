@@ -24,7 +24,9 @@ from app.oauth import BridgeOAuthProvider, SignedTokens
 settings = Settings.from_env()
 signer = SignedTokens(settings.signing_secret)
 health_bridge = HealthBridge(settings.mi_token_json)
-oauth_provider = BridgeOAuthProvider(settings.public_base_url, settings.mcp_url, signer)
+oauth_provider = BridgeOAuthProvider(
+    settings.public_base_url, settings.mcp_url, signer, settings.static_token
+)
 
 
 @dataclass
