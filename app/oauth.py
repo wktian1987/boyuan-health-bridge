@@ -74,10 +74,19 @@ class BridgeOAuthProvider(
 ):
     """Single-owner OAuth provider with CIMD clients and stateless signed tokens."""
 
-    def __init__(self, base_url: str, resource_url: str, signer: SignedTokens):
+    def __init__(
+        self,
+        base_url: str,
+        resource_url: str,
+        signer: SignedTokens,
+        static_token: str = "",
+    ):
         self.base_url = base_url.rstrip("/")
         self.resource_url = resource_url
         self.signer = signer
+        # 可选的静态 Bearer Token，供不支持网页 OAuth 的 MCP 客户端
+        # （如豆包自定义连接器）直接在 Authorization 头中使用。
+        self.static_token = static_token or ""
         self._clients: dict[str, OAuthClientInformationFull] = {}
         self._used_codes: set[str] = set()
 
@@ -204,6 +213,17 @@ class BridgeOAuthProvider(
         )
 
     async def load_access_token(self, token: str) -> AccessToken | None:
+        # 静态 Bearer Token：直接放行（用于不支持 OAuth 网页授权的客户端）
+        if self.static_token and hmac.compare_digest(token, self.static_token):
+            return AccessToken(
+                token=token,
+                client_id="static-owner",
+                scopes=["health.read"],
+                expires_at=int(time.time()) + 365 * 24 * 3600,
+                resource=self.resource_url,
+                subject="owner",
+                claims={"iss": self.base_url, "static": True},
+            )
         claims = self.signer.verify(token, "access_token")
         if not claims or claims.get("resource") != self.resource_url:
             return None
