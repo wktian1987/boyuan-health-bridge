@@ -17,6 +17,12 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.routing import Mount, Route
 
+# 下面三行是新增的
+import json
+import os
+import urllib.request
+import urllib.error
+
 from app.config import Settings
 from app.health import HealthBridge, Metric
 from app.oauth import BridgeOAuthProvider, SignedTokens
@@ -274,6 +280,65 @@ async def setup_status(request: Request):
     <title>小米登录状态</title><style>body{{font:16px system-ui;max-width:620px;margin:40px auto;padding:0 20px;line-height:1.7}}textarea{{font:12px ui-monospace,monospace}}a{{color:#165dff}}</style>{content}"""
     return _no_store(HTMLResponse(body))
 
+# 下面是新增的
+port = os.getenv("PORT", "8000")
+MCP_INTERNAL_URL = f"http://127.0.0.1:{port}/mcp"
+
+async def flat_health_handler(request: Request):
+    try:
+        raw_body = await request.body()
+        incoming_headers = dict(request.headers)
+        incoming_headers["X-Internal-Flat-Proxy"] = "1"
+        incoming_headers.pop("Content-Length", None)
+
+        # 同步urllib放到线程执行，不阻塞async事件循环
+        def sync_post():
+            req = urllib.request.Request(
+                MCP_INTERNAL_URL,
+                data=raw_body,
+                headers=incoming_headers,
+                method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    status = resp.getcode()
+                    body = resp.read()
+                    return status, body
+            except urllib.error.HTTPError as he:
+                status = he.code
+                body = he.read()
+                return status, body
+
+        # 丢进线程池运行同步urllib
+        loop = asyncio.get_running_loop()
+        status, body = await loop.run_in_executor(None, sync_post)
+
+        if status != 200:
+            try:
+                resp_json = json.loads(body)
+            except Exception:
+                resp_json = {}
+            return JSONResponse(resp_json, status_code=status)
+
+        mcp_resp = json.loads(body)
+        result = mcp_resp.get("result", {})
+        content_list = result.get("content", [])
+
+        if content_list:
+            first_content = content_list[0]
+            if first_content.get("type") == "text":
+                try:
+                    parsed_json = json.loads(first_content["text"])
+                    return JSONResponse(parsed_json)
+                except json.JSONDecodeError:
+                    pass
+
+        return JSONResponse(mcp_resp)
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+# 上面是新增的
+
 
 mcp_app = mcp.streamable_http_app(
     streamable_http_path="/mcp",
@@ -293,6 +358,7 @@ app = Starlette(
     routes=[
         Route("/", home, methods=["GET"]),
         Route("/health", health, methods=["GET"]),
+        Route("/flat-health", flat_health_handler, methods=["POST"]),
         Route("/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
         Route("/approve", approve_get, methods=["GET"]),
         Route("/approve", approve_post, methods=["POST"]),
@@ -301,7 +367,7 @@ app = Starlette(
         Route("/setup/home", setup_home, methods=["GET"]),
         Route("/setup/start", setup_start, methods=["POST"]),
         Route("/setup/status", setup_status, methods=["GET"]),
-        Mount("/", app=mcp_app),
+        Mount("/", app=mcp_app), 
     ],
     lifespan=lifespan,
 )
