@@ -1,0 +1,15 @@
+{
+    "relative": {
+        "relative_uid": 325138082,
+        "relative_note": "me",
+        "relative_icon": "https://cdn.cnbj1.fds.api.mi-img.com/user-avatar/70cc4a5e-180a-444e-aa99-cc506a670b91.jpg",
+        "latest_data_time": 1794834448,
+        "latest_abnormal_record_time": 0,
+        "source_tag": 1
+    },
+    "metric": "weight",
+    "query_date": "2026-11-15",
+    "days": 1,
+    "data": [],
+    "notice": "数据来自小米运动健康亲友共享，不用于医疗诊断。"
+}
