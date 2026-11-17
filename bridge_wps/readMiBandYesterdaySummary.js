@@ -1,42 +1,67 @@
-// =============================================================
-// 手环桥 · 昨日封档总结（get_health_history）AirScript 版
-// 沿用实时快照脚本的字段结构、重试方式、sleep_nap / sleep_score / EMA 算法
-//
-// 与快照版差异：
-// 1. 工具名 get_health_snapshot → get_health_history，按指标逐条请求
-// 2. result 字段只覆盖快照里出现过的项；历史需要的指标：
-//    calories / heart_rate / sleep / weight（steps/spo2/intensity/valid_stand
-//    在 result 里无对应字段，暂不请求；需要时按同样封装补一条即可）
-// 3. rcdType = "昨日总结"（封档行），dateStr = 被封档日 query_date
-// =============================================================
+const yesterdayStr = String(Context.argv.yesterdayStr);
+const nDaysAgoDelete = Number(Context.argv.nDaysAgoDelete);
+const raw_avg_calorie = Number(Context.argv.avg_calorie);
+const raw_avg_rHR = Number(Context.argv.avg_rHR);
+const raw_avg_sleepDuration = Number(Context.argv.avg_sleepDuration);
+const raw_avg_sleepMaxHR = Number(Context.argv.avg_sleepMaxHR);
+const raw_avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
+const raw_avg_weight = Number(Context.argv.avg_weight);
 
-// ---- 上一期 EMA 均值（同快照版入参）----
-// const yesterdayStr = String(Context.argv.yesterdayStr);
-// const nDaysAgoDelete = Number(Context.argv.nDaysAgoDelete);
-// const raw_avg_calorie = Number(Context.argv.avg_calorie);
-// const raw_avg_rHR = Number(Context.argv.avg_rHR);
-// const raw_avg_sleepDuration = Number(Context.argv.avg_sleepDuration);
-// const raw_avg_sleepMaxHR = Number(Context.argv.avg_sleepMaxHR);
-// const raw_avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
-// const raw_avg_weight = Number(Context.argv.avg_weight);
+// const yesterdayStr = '2026-11-16';   // String(Context.argv.yesterdayStr);
+// const nDaysAgoDelete = 30;   // Number(Context.argv.nDaysAgoDelete);
+// const raw_avg_calorie = 1000;   // Number(Context.argv.avg_calorie); 
+// const raw_avg_rHR = 70;   // Number(Context.argv.avg_rHR);
+// const raw_avg_sleepDuration = 500;   // Number(Context.argv.avg_sleepDuration);
+// const raw_avg_sleepMaxHR = 100;   // Number(Context.argv.avg_sleepMaxHR);
+// const raw_avg_sleepAvgHR = 80;   // Number(Context.argv.avg_sleepAvgHR);
+// const raw_avg_weight = 70;   // Number(Context.argv.avg_weight);
 
-const yesterdayStr = '2026-11-16';   // String(Context.argv.yesterdayStr);
-const nDaysAgoDelete = 30;   // Number(Context.argv.nDaysAgoDelete);
-const raw_avg_calorie = 1000;   // Number(Context.argv.avg_calorie); 
-const raw_avg_rHR = 70;   // Number(Context.argv.avg_rHR);
-const raw_avg_sleepDuration = 500;   // Number(Context.argv.avg_sleepDuration);
-const raw_avg_sleepMaxHR = 100;   // Number(Context.argv.avg_sleepMaxHR);
-const raw_avg_sleepAvgHR = 80;   // Number(Context.argv.avg_sleepAvgHR);
-const raw_avg_weight = 70;   // Number(Context.argv.avg_weight);
-
-const url = "https://boyuan-health-bridge-5cup.onrender.com/flat-health";
-const headers = {
-  "Authorization": "Bearer iYnKPy#G!vQz",
-  "Content-Type": "application/json",
-  "Accept": "application/json"
+const result = {
+  "rcdType": "",
+  "summaryTimestamp": 0,
+  "nDaysAgoTimestamp": 0,
+  "timeBucket": 24,
+  "calories": 0,
+  "weight": 0,
+  "max_hr": 0,
+  "min_hr": 0,
+  "avg_hr": 0,
+  "avg_rhr": 0,
+  "abnormal_hr_count": 0,
+  "sleep_total_duration": 0,
+  "sleep_nap": 0,
+  "sleep_score": 0,
+  "sleep_max_hr": 0,
+  "sleep_min_hr": 0,
+  "sleep_avg_hr": 0,
+  "newAvg_calorie": 0,
+  "newAvg_rHR": 0,
+  "newAvg_sleepAvgHR": 0,
+  "newAvg_sleepDuration": 0,
+  "newAvg_sleepMaxHR": 0,
+  "newAvg_weight": 0
 };
 
+result.rcdType = "昨日总结";
+
 const pad = n => n.toString().padStart(2, '0');
+
+// sleep 封装，同步环境用
+const sleep = (ms) => {
+    const start = Date.now();
+    while (Date.now() - start < ms) { }
+};
+
+
+function datatimeToTimestamp(datetimeStr) {
+  const dt = new Date(datetimeStr + "+08:00");
+  return  Math.floor(dt.getTime() / 1000);
+}
+
+result.summaryTimestamp = datatimeToTimestamp(yesterdayStr + " 23:59:59");
+
+result.nDaysAgoTimestamp = result.summaryTimestamp - nDaysAgoDelete * 24 * 60 * 60;
+
 
 /**
  * 单指标历史请求（带 20 次重试）
@@ -45,6 +70,12 @@ const pad = n => n.toString().padStart(2, '0');
  * @returns {object|null} - 指标历史数据，或 null
  * */
 function callHistory(metric, queryDate = yesterdayStr) {
+  const url = "https://boyuan-health-bridge-5cup.onrender.com/flat-health";
+  const headers = {
+    "Authorization": "Bearer iYnKPy#G!vQz",
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  };
   const body = {
     "jsonrpc": "2.0",
     "id": 2,
@@ -69,6 +100,7 @@ function callHistory(metric, queryDate = yesterdayStr) {
     if (resp.status < 200 || resp.status >= 300) {
       console.log(`[${metric}] 获取失败 http错误：${resp.status}`);
     }
+    console.log(`[${metric}] 获取成功`);
     const data = resp.json();
     return Array.isArray(data?.data) && data.data.length ? data.data[0] : null;
   } catch (e) {
@@ -77,134 +109,77 @@ function callHistory(metric, queryDate = yesterdayStr) {
 }
 
 const data_calories = callHistory("calories", yesterdayStr);
+sleep(1000);
 const data_heart_rate = callHistory("heart_rate", yesterdayStr);
+sleep(1000);
 const data_sleep = callHistory("sleep", yesterdayStr);
+sleep(1000);
 const data_weight = callHistory("weight", yesterdayStr);
+sleep(1000);
 
 console.log("data_calories:", data_calories);
 console.log("data_heart_rate:", data_heart_rate);
 console.log("data_sleep:", data_sleep);
 console.log("data_weight:", data_weight);
 
+const _data_calories = { "time": 1794787200, "calories": 1815, "goal": 0 };
+const _data_heart_rate = { "time": 1794787200, "avg_hr": 89, "avg_rhr": 71, "max_hr": 141, "min_hr": 61, "latest_hr": { "bpm": 74, "time": 1794873540 }, "abnormal_hr_count": 0, "aerobic_hr_zone_duration": 18, "anaerobic_hr_zone_duration": 0, "extreme_hr_zone_duration": 0, "fat_burning_hr_zone_duration": 132, "warm_up_hr_zone_duration": 410 };
+const _data_sleep = { "time": 1794787200, "total_duration": 475, "sleep_score": 91, "sleep_stage": 4, "sleep_deep_duration": 157, "sleep_light_duration": 172, "sleep_rem_duration": 123, "sleep_awake_duration": 12, "long_sleep_evaluation": 20, "day_sleep_evaluation": 0, "avg_hr": 71, "max_hr": 105, "min_hr": 61, "avg_spo2": 96, "segment_details": [{ "bedtime": 1794804600, "wake_up_time": 1794805980, "duration": 23, "sleep_deep_duration": 0, "sleep_light_duration": 0, "timezone": 32, "awake_count": 0, "sleep_awake_duration": 0 }, { "bedtime": 1794750300, "wake_up_time": 1794778140, "duration": 452, "sleep_deep_duration": 157, "sleep_light_duration": 172, "timezone": 32, "awake_count": 1, "sleep_awake_duration": 12 }] };
+const _data_weight = { "time": 1794779406, "weight": 78.5, "bmi": 24.8 };
 
 
-// // 四条都成功才算 OK；任一失败记 FAIL（字段兜底 0，不中断流程）
-// const coldStartResult = (hCal.ok && hHr.ok && hSleep.ok && hWt.ok) ? "OK" : "FAIL";
+result.calories = data_calories?.calories ?? 0;
+result.weight = data_weight?.weight ?? raw_avg_weight;
+result.max_hr = data_heart_rate?.max_hr ?? 0;
+result.min_hr = data_heart_rate?.min_hr ?? 0;
+result.avg_hr = data_heart_rate?.avg_hr ?? 0;
+result.avg_rhr = data_heart_rate?.avg_rhr ?? 0;
+result.abnormal_hr_count = data_heart_rate?.abnormal_hr_count ?? 0;
+result.sleep_total_duration = data_sleep?.total_duration ?? 0;
+result.sleep_max_hr = data_sleep?.max_hr ?? 0;
+result.sleep_min_hr = data_sleep?.min_hr ?? 0;
+result.sleep_avg_hr = data_sleep?.avg_hr ?? 0;
 
-// const calRow = hCal.row || {};
-// const hrRow = hHr.row || {};
-// const sleepRow = hSleep.row || {};
-// const wtRow = hWt.row || {};
+const sleep_segment = data_sleep?.segment_details ?? null;
+if (result.sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
+  for (let i = 0; i < sleep_segment.length; i++) {
+    const thisSegment = sleep_segment[i];
+    const thisBedtime = new Date(thisSegment.bedtime * 1000);
+    const thisBedtimeHour = thisBedtime.getHours();
+    if (thisBedtimeHour > 9 && thisBedtimeHour < 18) {
+      result.sleep_nap += thisSegment.duration;
+    }
+  }
+}
 
-// // ---- 时间派生（封档行）----
-// // updated_time 取 heart_rate 的 relative.latest_data_time；兜底 0
-// const updated_time = hHr.relative?.latest_data_time ?? 0;
-// const date = new Date(updated_time * 1000);
-// const latest_hour = updated_time > 0 ? date.getHours() : 0;
-// const timeBucket = latest_hour + 1;
+// ---- 睡眠评分：沿用快照版自定义公式（不直接用接口 sleep_score）----
+const sleep_total_target = 500;
+const sleep_nap_target = 30;
+let sleep_score = 100;
+if (result.sleep_total_duration < sleep_total_target) {
+  sleep_score = 100 * result.sleep_total_duration / sleep_total_target;
+} else {
+  const sleep_moreThanTarget = result.sleep_total_duration - sleep_total_target;
+  sleep_score = Math.max(0, 100 - 100 * sleep_moreThanTarget / sleep_total_target);
+}
+let sleep_score_weight = 0.9;
+if (result.sleep_nap < sleep_nap_target) {
+  sleep_score_weight = 0.9 + 0.1 * result.sleep_nap / sleep_nap_target;
+} else {
+  const sleep_nap_moreThanTarget = result.sleep_nap - sleep_nap_target;
+  sleep_score_weight = 0.9 + 0.1 * (1 - sleep_nap_moreThanTarget / sleep_nap_target);
+}
+result.sleep_score = sleep_score * sleep_score_weight;
 
-// const hh = pad(date.getHours());
-// const mi = pad(date.getMinutes());
-// const ss = pad(date.getSeconds());
-// const timeStr = updated_time > 0 ? `${hh}:${mi}:${ss}` : "00:00:00";
 
+result.newAvg_calorie = 0.25 * result.calories + 0.75 * raw_avg_calorie;
+result.newAvg_rHR = 0.25 * result.avg_rhr + 0.75 * raw_avg_rHR;
+result.newAvg_sleepDuration = 0.25 * result.sleep_total_duration + 0.75 * raw_avg_sleepDuration;
+result.newAvg_sleepMaxHR = 0.25 * result.sleep_max_hr + 0.75 * raw_avg_sleepMaxHR;
+result.newAvg_sleepAvgHR = 0.25 * result.sleep_avg_hr + 0.75 * raw_avg_sleepAvgHR;
+result.newAvg_weight = 0.25 * result.weight + 0.75 * raw_avg_weight;
 
-// // ---- 指标映射（历史 data[0] → result 字段，缺失兜底 0）----
-// const calories = calRow.calories ?? 0;
-// const weight = wtRow.weight ?? 0;
+result.resultStr = JSON.stringify(result);
+console.log("result: " + result.resultStr);
 
-// const max_hr = hrRow.max_hr ?? 0;
-// const min_hr = hrRow.min_hr ?? 0;
-// const avg_hr = hrRow.avg_hr ?? 0;
-// const avg_rhr = hrRow.avg_rhr ?? 0;
-// const abnormal_hr_count = hrRow.abnormal_hr_count ?? 0;
-
-// const sleep_total_duration = sleepRow.total_duration ?? 0;
-// const sleep_max_hr = sleepRow.max_hr ?? 0;
-// const sleep_min_hr = sleepRow.min_hr ?? 0;
-// const sleep_avg_hr = sleepRow.avg_hr ?? 0;
-
-// // ---- 午睡分段：沿用快照版 09:00–18:00 白天段累加 ----
-// let sleep_nap = 0;
-// const sleep_segment = sleepRow.segment_details ?? null;
-// if (sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
-//   for (let i = 0; i < sleep_segment.length; i++) {
-//     const thisSegment = sleep_segment[i];
-//     const thisBedtime = new Date(thisSegment.bedtime * 1000);
-//     const thisBedtimeHour = thisBedtime.getHours();
-//     if (thisBedtimeHour > 9 && thisBedtimeHour < 18) {
-//       sleep_nap += thisSegment.duration;
-//     }
-//   }
-// }
-
-// // ---- 睡眠评分：沿用快照版自定义公式（不直接用接口 sleep_score）----
-// const sleep_total_target = 500;
-// const sleep_nap_target = 30;
-// let sleep_score = 100;
-// if (sleep_total_duration < sleep_total_target) {
-//   sleep_score = 100 * sleep_total_duration / sleep_total_target;
-// } else {
-//   const sleep_moreThanTarget = sleep_total_duration - sleep_total_target;
-//   sleep_score = Math.max(0, 100 - 100 * sleep_moreThanTarget / sleep_total_target);
-// }
-// let sleep_score_weight = 0.9;
-// if (sleep_nap < sleep_nap_target) {
-//   sleep_score_weight = 0.9 + 0.1 * sleep_nap / sleep_nap_target;
-// } else {
-//   const sleep_nap_moreThanTarget = sleep_nap - sleep_nap_target;
-//   sleep_score_weight = 0.9 + 0.1 * (1 - sleep_nap_moreThanTarget / sleep_nap_target);
-// }
-// sleep_score = sleep_score * sleep_score_weight;
-
-// // ---- EMA 滚动：0.25 × 本期封档值 + 0.75 × 上一期均值（同快照版）----
-// const newAvg_calorie = 0.25 * calories + 0.75 * raw_avg_calorie;
-// const newAvg_rHR = 0.25 * avg_rhr + 0.75 * raw_avg_rHR;
-// const newAvg_sleepDuration = 0.25 * sleep_total_duration + 0.75 * raw_avg_sleepDuration;
-// const newAvg_sleepMaxHR = 0.25 * sleep_max_hr + 0.75 * raw_avg_sleepMaxHR;
-// const newAvg_sleepAvgHR = 0.25 * sleep_avg_hr + 0.75 * raw_avg_sleepAvgHR;
-// const newAvg_weight = 0.25 * weight + 0.75 * raw_avg_weight;
-
-// const rcdType = "昨日总结";
-
-// const result = {
-//   coldStartResult,
-//   rcdType,
-//   updated_time,
-//   dateStr,
-//   timeStr,
-//   latest_hour,
-//   timeBucket,
-//   yesterdayStr,
-//   calories,
-//   weight,
-//   max_hr,
-//   min_hr,
-//   avg_hr,
-//   avg_rhr,
-//   abnormal_hr_count,
-//   sleep_total_duration,
-//   sleep_nap,
-//   sleep_score,
-//   sleep_max_hr,
-//   sleep_min_hr,
-//   sleep_avg_hr,
-//   newAvg_calorie,
-//   newAvg_rHR,
-//   newAvg_sleepAvgHR,
-//   newAvg_sleepDuration,
-//   newAvg_sleepMaxHR,
-//   newAvg_weight
-// };
-
-// result.resultStr = JSON.stringify(result);
-// result.rawData = JSON.stringify({
-//   query_date: queryDate,
-//   calories: calRow,
-//   heart_rate: hrRow,
-//   sleep: sleepRow,
-//   weight: wtRow
-// });
-// console.log("result: " + result.resultStr);
-
-// return result;
+return result;
