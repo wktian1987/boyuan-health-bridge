@@ -48,14 +48,14 @@ const pad = n => n.toString().padStart(2, '0');
 
 // sleep 封装，同步环境用
 const sleep = (ms) => {
-    const start = Date.now();
-    while (Date.now() - start < ms) { }
+  const start = Date.now();
+  while (Date.now() - start < ms) { }
 };
 
 
 function datatimeToTimestamp(datetimeStr) {
   const dt = new Date(datetimeStr + "+08:00");
-  return  Math.floor(dt.getTime() / 1000);
+  return Math.floor(dt.getTime() / 1000);
 }
 
 result.summaryTimestamp = datatimeToTimestamp(yesterdayStr + " 23:59:59");
@@ -117,15 +117,15 @@ sleep(1000);
 const data_weight = callHistory("weight", yesterdayStr);
 sleep(1000);
 
-console.log("data_calories:", data_calories);
-console.log("data_heart_rate:", data_heart_rate);
-console.log("data_sleep:", data_sleep);
-console.log("data_weight:", data_weight);
+// console.log("data_calories:", data_calories);
+// console.log("data_heart_rate:", data_heart_rate);
+// console.log("data_sleep:", data_sleep);
+// console.log("data_weight:", data_weight);
 
-const _data_calories = { "time": 1794787200, "calories": 1815, "goal": 0 };
-const _data_heart_rate = { "time": 1794787200, "avg_hr": 89, "avg_rhr": 71, "max_hr": 141, "min_hr": 61, "latest_hr": { "bpm": 74, "time": 1794873540 }, "abnormal_hr_count": 0, "aerobic_hr_zone_duration": 18, "anaerobic_hr_zone_duration": 0, "extreme_hr_zone_duration": 0, "fat_burning_hr_zone_duration": 132, "warm_up_hr_zone_duration": 410 };
-const _data_sleep = { "time": 1794787200, "total_duration": 475, "sleep_score": 91, "sleep_stage": 4, "sleep_deep_duration": 157, "sleep_light_duration": 172, "sleep_rem_duration": 123, "sleep_awake_duration": 12, "long_sleep_evaluation": 20, "day_sleep_evaluation": 0, "avg_hr": 71, "max_hr": 105, "min_hr": 61, "avg_spo2": 96, "segment_details": [{ "bedtime": 1794804600, "wake_up_time": 1794805980, "duration": 23, "sleep_deep_duration": 0, "sleep_light_duration": 0, "timezone": 32, "awake_count": 0, "sleep_awake_duration": 0 }, { "bedtime": 1794750300, "wake_up_time": 1794778140, "duration": 452, "sleep_deep_duration": 157, "sleep_light_duration": 172, "timezone": 32, "awake_count": 1, "sleep_awake_duration": 12 }] };
-const _data_weight = { "time": 1794779406, "weight": 78.5, "bmi": 24.8 };
+// const _data_calories = { "time": 1794787200, "calories": 1815, "goal": 0 };
+// const _data_heart_rate = { "time": 1794787200, "avg_hr": 89, "avg_rhr": 71, "max_hr": 141, "min_hr": 61, "latest_hr": { "bpm": 74, "time": 1794873540 }, "abnormal_hr_count": 0, "aerobic_hr_zone_duration": 18, "anaerobic_hr_zone_duration": 0, "extreme_hr_zone_duration": 0, "fat_burning_hr_zone_duration": 132, "warm_up_hr_zone_duration": 410 };
+// const _data_sleep = { "time": 1794787200, "total_duration": 475, "sleep_score": 91, "sleep_stage": 4, "sleep_deep_duration": 157, "sleep_light_duration": 172, "sleep_rem_duration": 123, "sleep_awake_duration": 12, "long_sleep_evaluation": 20, "day_sleep_evaluation": 0, "avg_hr": 71, "max_hr": 105, "min_hr": 61, "avg_spo2": 96, "segment_details": [{ "bedtime": 1794804600, "wake_up_time": 1794805980, "duration": 23, "sleep_deep_duration": 0, "sleep_light_duration": 0, "timezone": 32, "awake_count": 0, "sleep_awake_duration": 0 }, { "bedtime": 1794750300, "wake_up_time": 1794778140, "duration": 452, "sleep_deep_duration": 157, "sleep_light_duration": 172, "timezone": 32, "awake_count": 1, "sleep_awake_duration": 12 }] };
+// const _data_weight = { "time": 1794779406, "weight": 78.5, "bmi": 24.8 };
 
 
 result.calories = data_calories?.calories ?? 0;
