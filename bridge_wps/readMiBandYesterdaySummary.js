@@ -47,6 +47,7 @@ result.rcdType = "昨日总结";
 // sleep 封装，同步环境用
 const sleep = (ms) => {
   const start = Date.now();
+  console.log(`等待${ms}毫秒 ... ...`);
   while (Date.now() - start < ms) { }
 };
 
@@ -106,14 +107,14 @@ function callHistory(metric, queryDate = yesterdayStr) {
   }
 }
 
+sleep(5000);
 const data_calories = callHistory("calories", yesterdayStr);
-sleep(1000);
+sleep(5000);
 const data_heart_rate = callHistory("heart_rate", yesterdayStr);
-sleep(1000);
+sleep(5000);
 const data_sleep = callHistory("sleep", yesterdayStr);
-sleep(1000);
+sleep(5000);
 const data_weight = callHistory("weight", yesterdayStr);
-sleep(1000);
 
 result.calories = data_calories?.calories ?? 0;
 result.weight = data_weight?.weight ?? raw_avg_weight;

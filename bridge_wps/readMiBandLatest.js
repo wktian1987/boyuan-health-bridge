@@ -6,7 +6,7 @@ const raw_avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
 const raw_avg_weight = Number(Context.argv.avg_weight);
 
 
-const maxTry = 20;
+const maxTry = 10;
 
 const url = "https://boyuan-health-bridge-5cup.onrender.com/flat-health";
 const body = {
@@ -27,7 +27,8 @@ const headers = {
 // sleep 封装，同步环境用
 const sleep = (ms) => {
     const start = Date.now();
-    while (Date.now() - start < ms) { }
+    console.log(`等待${ms}毫秒 ... ...`) ;
+    while (Date.now() - start < ms) {}
 };
 
 let coldStartResult = "FAIL";
@@ -43,7 +44,7 @@ for (let waitRound = 0; waitRound < maxTry; waitRound++) {
         });
         if (resp.status < 200 || resp.status >= 300) {
             console.log(`第${waitRound + 1}次，http错误：${resp.status}`);
-            sleep(5000);
+            sleep(60000);
             continue;
         }
         snapshotData = resp.json();
@@ -51,7 +52,7 @@ for (let waitRound = 0; waitRound < maxTry; waitRound++) {
         break;
     } catch (e) {
         console.log(`第${waitRound + 1}次请求失败`, e.message);
-        sleep(5000);
+        sleep(60000);
     }
 }
 
@@ -75,7 +76,7 @@ const _d = pad(yesterday.getDate());
 const yesterdayStr = `${_y}-${_m}-${_d}`;
 
 const calories = snapshotData?.latest?.calories?.calories ?? 0;
-const weight = snapshotData?.latest?.weight?.weight ?? 0;
+const weight = snapshotData?.latest?.weight?.weight ?? raw_avg_weight;
 const dateStr = snapshotData?.daily_summary?.date ?? "1987-01-18";
 
 const max_hr = snapshotData?.daily_summary?.heart_rate?.max_hr ?? 0;
