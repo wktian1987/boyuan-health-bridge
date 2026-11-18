@@ -101,8 +101,9 @@ if (sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
 
 }
 
-const sleep_total_target = 500;
-const sleep_nap_target = 30;
+const sleep_total_target = (500 + raw_avg_sleepDuration) / 2;
+const sleep_nap_target = (50 + 0.1 * sleep_total_target) / 2;
+
 let sleep_score = 100;
 if (sleep_total_duration < sleep_total_target) {
     sleep_score = 100 * sleep_total_duration / sleep_total_target;
@@ -118,6 +119,8 @@ if (sleep_nap < sleep_nap_target) {
     sleep_score_weight = 0.9 + 0.1 * (1 - sleep_nap_moreThanTarget / sleep_nap_target);
 }
 sleep_score = sleep_score * sleep_score_weight;
+sleep_score = 0.5 * sleep_score + 0.5 * snapshotData?.daily_summary?.sleep?.sleep_score ?? sleep_score;
+
 
 const newAvg_calorie = 0.25 * calories + 0.75 * raw_avg_calorie;
 const newAvg_rHR = 0.25 * avg_rhr + 0.75 * raw_avg_rHR;
