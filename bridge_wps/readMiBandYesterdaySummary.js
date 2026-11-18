@@ -148,14 +148,14 @@ if (result.sleep_total_duration < sleep_total_target) {
   sleep_score = 100 * result.sleep_total_duration / sleep_total_target;
 } else {
   const sleep_moreThanTarget = result.sleep_total_duration - sleep_total_target;
-  sleep_score = Math.max(0, 100 - 100 * sleep_moreThanTarget / sleep_total_target);
+  sleep_score = Math.max(0, 100 - 0.5 * 100 * sleep_moreThanTarget / sleep_total_target);
 }
 let sleep_score_weight = 0.9;
 if (result.sleep_nap < sleep_nap_target) {
   sleep_score_weight = 0.9 + 0.1 * result.sleep_nap / sleep_nap_target;
 } else {
   const sleep_nap_moreThanTarget = result.sleep_nap - sleep_nap_target;
-  sleep_score_weight = 0.9 + 0.1 * (1 - sleep_nap_moreThanTarget / sleep_nap_target);
+  sleep_score_weight = 0.9 + 0.1 * (1 - 0.5 * sleep_nap_moreThanTarget / sleep_nap_target);
 }
 result.sleep_score = sleep_score * sleep_score_weight;
 result.sleep_score = 0.5 * result.sleep_score + 0.5 * data_sleep?.sleep_score ?? result.sleep_score;
