@@ -63,7 +63,7 @@ result.nDaysAgoTimestamp = result.summaryTimestamp - nDaysAgoDelete * 24 * 60 * 
 
 
 /**
- * 单指标历史请求（带 20 次重试）
+ * 单指标历史请求
  * @param {string} metric - 指标名，如 "calories"、"heart_rate"、"sleep"、"weight"
  * @param {string} queryDate - 查询日期，格式为 "YYYY-MM-DD"
  * @returns {object|null} - 指标历史数据，或 null
@@ -94,7 +94,7 @@ function callHistory(metric, queryDate = yesterdayStr) {
       method: "POST",
       headers: headers,
       body: JSON.stringify(body),
-      timeout: 10000
+      timeout: 60000
     });
     if (resp.status < 200 || resp.status >= 300) {
       console.log(`[${metric}] 获取失败 http错误：${resp.status}`);
@@ -107,13 +107,9 @@ function callHistory(metric, queryDate = yesterdayStr) {
   }
 }
 
-sleep(5000);
 const data_calories = callHistory("calories", yesterdayStr);
-sleep(5000);
 const data_heart_rate = callHistory("heart_rate", yesterdayStr);
-sleep(5000);
 const data_sleep = callHistory("sleep", yesterdayStr);
-sleep(5000);
 const data_weight = callHistory("weight", yesterdayStr);
 
 result.calories = data_calories?.calories ?? 0;
@@ -121,12 +117,12 @@ result.weight = data_weight?.weight ?? raw_avg_weight;
 result.max_hr = data_heart_rate?.max_hr ?? 0;
 result.min_hr = data_heart_rate?.min_hr ?? 0;
 result.avg_hr = data_heart_rate?.avg_hr ?? 0;
-result.avg_rhr = data_heart_rate?.avg_rhr ?? 0;
+result.avg_rhr = data_heart_rate?.avg_rhr ?? 0; if (result.avg_rhr < 10) { result.avg_rhr = raw_avg_rHR }
 result.abnormal_hr_count = data_heart_rate?.abnormal_hr_count ?? 0;
 result.sleep_total_duration = data_sleep?.total_duration ?? 0;
-result.sleep_max_hr = data_sleep?.max_hr ?? 0;
-result.sleep_min_hr = data_sleep?.min_hr ?? 0;
-result.sleep_avg_hr = data_sleep?.avg_hr ?? 0;
+result.sleep_max_hr = data_sleep?.max_hr ?? 0; if(result.sleep_max_hr < 10) {result.sleep_max_hr = raw_avg_sleepMaxHR}
+result.sleep_min_hr = data_sleep?.min_hr ?? 0; if(result.sleep_min_hr < 10) {result.sleep_max_hr = raw_avg_sleepAvgHR}
+result.sleep_avg_hr = data_sleep?.avg_hr ?? 0; if(result.sleep_avg_hr < 10) {result.sleep_max_hr = raw_avg_sleepAvgHR}
 
 const sleep_segment = data_sleep?.segment_details ?? null;
 if (result.sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
@@ -150,15 +146,21 @@ if (result.sleep_total_duration < sleep_total_target) {
   const sleep_moreThanTarget = result.sleep_total_duration - sleep_total_target;
   sleep_score = Math.max(0, 100 - 0.5 * 100 * sleep_moreThanTarget / sleep_total_target);
 }
-let sleep_score_weight = 0.9;
-if (result.sleep_nap < sleep_nap_target) {
-  sleep_score_weight = 0.9 + 0.1 * result.sleep_nap / sleep_nap_target;
-} else {
-  const sleep_nap_moreThanTarget = result.sleep_nap - sleep_nap_target;
-  sleep_score_weight = 0.9 + 0.1 * (1 - 0.5 * sleep_nap_moreThanTarget / sleep_nap_target);
+
+function Sleep_score_weight(x, peakX = 50, a = 0.0001) {
+    if (x <= peakX) {
+        const k = 0.1 / (peakX * peakX);
+        return -k * x * x + 2 * k * peakX * x + 0.9;
+    } else {
+        const t = x - peakX;
+        return 0.9 + 0.1 / (1 + a * t * t);
+    }
 }
+const sleep_score_weight = Sleep_score_weight(result.sleep_nap, sleep_nap_target);
+
 result.sleep_score = sleep_score * sleep_score_weight;
-result.sleep_score = 0.5 * result.sleep_score + 0.5 * data_sleep?.sleep_score ?? result.sleep_score;
+let sleep_score_xiaomi = data_sleep?.sleep_score ?? 0 ; if (sleep_score_xiaomi < 1) { sleep_score_xiaomi = sleep_score }
+result.sleep_score = 0.5 * result.sleep_score + 0.5 * sleep_score_xiaomi;
 
 result.newAvg_calorie = 0.25 * result.calories + 0.75 * raw_avg_calorie;
 result.newAvg_rHR = 0.25 * result.avg_rhr + 0.75 * raw_avg_rHR;

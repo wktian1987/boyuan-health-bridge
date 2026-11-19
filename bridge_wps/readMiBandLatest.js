@@ -6,7 +6,7 @@ const raw_avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
 const raw_avg_weight = Number(Context.argv.avg_weight);
 
 
-const maxTry = 10;
+const maxTry = 5;
 
 const url = "https://boyuan-health-bridge-5cup.onrender.com/flat-health";
 const body = {
@@ -40,11 +40,10 @@ for (let waitRound = 0; waitRound < maxTry; waitRound++) {
             method: "POST",
             headers: headers,
             body: JSON.stringify(body),
-            timeout: 10000
+            timeout: 60000
         });
         if (resp.status < 200 || resp.status >= 300) {
             console.log(`第${waitRound + 1}次，http错误：${resp.status}`);
-            sleep(60000);
             continue;
         }
         snapshotData = resp.json();
@@ -52,7 +51,6 @@ for (let waitRound = 0; waitRound < maxTry; waitRound++) {
         break;
     } catch (e) {
         console.log(`第${waitRound + 1}次请求失败`, e.message);
-        sleep(60000);
     }
 }
 
@@ -82,13 +80,13 @@ const dateStr = snapshotData?.daily_summary?.date ?? "1987-01-18";
 const max_hr = snapshotData?.daily_summary?.heart_rate?.max_hr ?? 0;
 const min_hr = snapshotData?.daily_summary?.heart_rate?.min_hr ?? 0;
 const avg_hr = snapshotData?.daily_summary?.heart_rate?.avg_hr ?? 0;
-const avg_rhr = snapshotData?.daily_summary?.heart_rate?.avg_rhr ?? 0;
+let avg_rhr = snapshotData?.daily_summary?.heart_rate?.avg_rhr ?? 0; if (avg_rhr < 10) { avg_rhr = raw_avg_rHR }
 const abnormal_hr_count = snapshotData?.daily_summary?.heart_rate?.abnormal_hr_count ?? 0;
 
 const sleep_total_duration = snapshotData?.daily_summary?.sleep?.total_duration ?? 0;
-const sleep_max_hr = snapshotData?.daily_summary?.sleep?.max_hr ?? 0;
-const sleep_min_hr = snapshotData?.daily_summary?.sleep?.min_hr ?? 0;
-const sleep_avg_hr = snapshotData?.daily_summary?.sleep?.avg_hr ?? 0;
+let sleep_max_hr = snapshotData?.daily_summary?.sleep?.max_hr ?? 0; if (sleep_max_hr < 10) { sleep_max_hr = raw_avg_sleepMaxHR }
+let sleep_min_hr = snapshotData?.daily_summary?.sleep?.min_hr ?? 0; if (sleep_min_hr < 10) { sleep_min_hr = raw_avg_sleepAvgHR }
+let sleep_avg_hr = snapshotData?.daily_summary?.sleep?.avg_hr ?? 0; if (sleep_avg_hr < 10) { sleep_avg_hr = raw_avg_sleepAvgHR }
 
 let sleep_nap = 0;
 const sleep_segment = snapshotData?.daily_summary?.sleep?.segment_details ?? null;
@@ -112,15 +110,21 @@ if (sleep_total_duration < sleep_total_target) {
     const sleep_moreThanTarget = sleep_total_duration - sleep_total_target;
     sleep_score = Math.max(0, 100 - 0.5 * 100 * sleep_moreThanTarget / sleep_total_target);
 }
-let sleep_score_weight = 0.9;
-if (sleep_nap < sleep_nap_target) {
-    sleep_score_weight = 0.9 + 0.1 * sleep_nap / sleep_nap_target;
-} else {
-    const sleep_nap_moreThanTarget = sleep_nap - sleep_nap_target;
-    sleep_score_weight = 0.9 + 0.1 * (1 - 0.5 * sleep_nap_moreThanTarget / sleep_nap_target);
+
+function Sleep_score_weight(x, peakX = 50, a = 0.0001) {
+    if (x <= peakX) {
+        const k = 0.1 / (peakX * peakX);
+        return -k * x * x + 2 * k * peakX * x + 0.9;
+    } else {
+        const t = x - peakX;
+        return 0.9 + 0.1 / (1 + a * t * t);
+    }
 }
+const sleep_score_weight = Sleep_score_weight(sleep_nap, sleep_nap_target);
+
 sleep_score = sleep_score * sleep_score_weight;
-sleep_score = 0.5 * sleep_score + 0.5 * snapshotData?.daily_summary?.sleep?.sleep_score ?? sleep_score;
+let sleep_score_xiaomi = snapshotData?.daily_summary?.sleep?.sleep_score ?? 0 ; if (sleep_score_xiaomi < 1) { sleep_score_xiaomi = sleep_score }
+sleep_score = 0.5 * sleep_score + 0.5 * sleep_score_xiaomi;
 
 
 const newAvg_calorie = 0.25 * calories + 0.75 * raw_avg_calorie;
