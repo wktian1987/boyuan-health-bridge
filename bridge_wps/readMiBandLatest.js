@@ -101,7 +101,7 @@ if (sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
 }
 
 const sleep_total_target = (500 + raw_avg_sleepDuration) / 2;
-const sleep_nap_target = (50 + 0.1 * sleep_total_target) / 2;
+const sleep_nap_target = (50 + 0.1 * sleep_total_target + 0.1 * sleep_total_duration) / 3;
 
 let sleep_score = 100;
 if (sleep_total_duration < sleep_total_target) {
@@ -126,6 +126,10 @@ sleep_score = sleep_score * sleep_score_weight;
 let sleep_score_xiaomi = snapshotData?.daily_summary?.sleep?.sleep_score ?? 0 ; if (sleep_score_xiaomi < 1) { sleep_score_xiaomi = sleep_score }
 sleep_score = 0.5 * sleep_score + 0.5 * sleep_score_xiaomi;
 
+const rHR_target = (60 + raw_avg_rHR) / 2 ;
+const avgHR_target = 70 ;
+const sleepAvgHR_target = (60 + raw_avg_sleepAvgHR) / 2 ;
+const hr_score = 100 * (rHR_target / avg_rhr + avgHR_target / avg_hr + sleepAvgHR_target / sleep_avg_hr) / 3;
 
 const newAvg_calorie = 0.25 * calories + 0.75 * raw_avg_calorie;
 const newAvg_rHR = 0.25 * avg_rhr + 0.75 * raw_avg_rHR;
@@ -157,6 +161,7 @@ const result = {
     sleep_max_hr,
     sleep_min_hr,
     sleep_avg_hr,
+    hr_score,
     newAvg_calorie,
     newAvg_rHR,
     newAvg_sleepAvgHR,

@@ -34,6 +34,7 @@ const result = {
   "sleep_max_hr": 0,
   "sleep_min_hr": 0,
   "sleep_avg_hr": 0,
+  "hr_score": 0,
   "newAvg_calorie": 0,
   "newAvg_rHR": 0,
   "newAvg_sleepAvgHR": 0,
@@ -138,7 +139,7 @@ if (result.sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
 
 // ---- 睡眠评分：沿用快照版自定义公式（不直接用接口 sleep_score）----
 const sleep_total_target = (500 + raw_avg_sleepDuration) / 2;
-const sleep_nap_target = (50 + 0.1 * sleep_total_target) / 2;
+const sleep_nap_target = (50 + 0.1 * sleep_total_target + 0.1 * result.sleep_total_duration) / 3;
 let sleep_score = 100;
 if (result.sleep_total_duration < sleep_total_target) {
   sleep_score = 100 * result.sleep_total_duration / sleep_total_target;
@@ -161,6 +162,11 @@ const sleep_score_weight = Sleep_score_weight(result.sleep_nap, sleep_nap_target
 result.sleep_score = sleep_score * sleep_score_weight;
 let sleep_score_xiaomi = data_sleep?.sleep_score ?? 0 ; if (sleep_score_xiaomi < 1) { sleep_score_xiaomi = sleep_score }
 result.sleep_score = 0.5 * result.sleep_score + 0.5 * sleep_score_xiaomi;
+
+const rHR_target = (60 + raw_avg_rHR) / 2 ;
+const avgHR_target = 70 ;
+const sleepAvgHR_target = (60 + raw_avg_sleepAvgHR) / 2 ;
+result.hr_score = 100 * (rHR_target / result.avg_rhr + avgHR_target / result.avg_hr + sleepAvgHR_target / result.sleep_avg_hr) / 3;
 
 result.newAvg_calorie = 0.25 * result.calories + 0.75 * raw_avg_calorie;
 result.newAvg_rHR = 0.25 * result.avg_rhr + 0.75 * raw_avg_rHR;
