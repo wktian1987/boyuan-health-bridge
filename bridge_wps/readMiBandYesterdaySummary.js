@@ -177,10 +177,10 @@ function Calculate_weightScore(currentWeight, avgWeight, idealWeight = 70) {
     let weightScore = 100 ;
     if (currentWeight < target_weight) {
         const delta_weight = target_weight - currentWeight;
-        weightScore = 100 - 100 * 0.5 * delta_weight / target_weight ;
+        weightScore = 100 - 100 * 0.5 * delta_weight / 5 ;
     } else {
         const delta_weight = currentWeight - target_weight ;
-        weightScore = 100 - 100 * delta_weight / target_weight ;
+        weightScore = 100 - 100 * delta_weight / 5 ;
     }
     return weightScore;
 }
