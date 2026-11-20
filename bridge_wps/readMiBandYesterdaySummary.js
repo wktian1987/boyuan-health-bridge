@@ -122,8 +122,8 @@ result.avg_rhr = data_heart_rate?.avg_rhr ?? 0; if (result.avg_rhr < 10) { resul
 result.abnormal_hr_count = data_heart_rate?.abnormal_hr_count ?? 0;
 result.sleep_total_duration = data_sleep?.total_duration ?? 0;
 result.sleep_max_hr = data_sleep?.max_hr ?? 0; if(result.sleep_max_hr < 10) {result.sleep_max_hr = raw_avg_sleepMaxHR}
-result.sleep_min_hr = data_sleep?.min_hr ?? 0; if(result.sleep_min_hr < 10) {result.sleep_max_hr = raw_avg_sleepAvgHR}
-result.sleep_avg_hr = data_sleep?.avg_hr ?? 0; if(result.sleep_avg_hr < 10) {result.sleep_max_hr = raw_avg_sleepAvgHR}
+result.sleep_min_hr = data_sleep?.min_hr ?? 0; if(result.sleep_min_hr < 10) {result.sleep_min_hr = raw_avg_sleepAvgHR}
+result.sleep_avg_hr = data_sleep?.avg_hr ?? 0; if(result.sleep_avg_hr < 10) {result.sleep_avg_hr = raw_avg_sleepAvgHR}
 
 const sleep_segment = data_sleep?.segment_details ?? null;
 if (result.sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
