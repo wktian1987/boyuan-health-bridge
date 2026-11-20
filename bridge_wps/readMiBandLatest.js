@@ -1,10 +1,10 @@
-const raw_avg_calorie = Number(Context.argv.avg_calorie);
-const raw_avg_rHR = Number(Context.argv.avg_rHR);
-const raw_avg_sleepDuration = Number(Context.argv.avg_sleepDuration);
-const raw_avg_sleepMaxHR = Number(Context.argv.avg_sleepMaxHR);
-const raw_avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
-const raw_avg_weight = Number(Context.argv.avg_weight);
-
+const avg_calorie       = Number(Context.argv.avg_calorie)  ;
+const avg_rHR           = Number(Context.argv.avg_rHR)  ;
+const avg_avgHR         = Number(Context.argv.avg_avgHR)    ;
+const avg_sleepDuration = Number(Context.argv.avg_sleepDuration)    ;
+const avg_sleepMaxHR    = Number(Context.argv.avg_sleepMaxHR)   ;
+const avg_sleepAvgHR    = Number(Context.argv.avg_sleepAvgHR)   ;
+const avg_weight        = Number(Context.argv.avg_weight)   ;
 
 const maxTry = 5;
 
@@ -24,12 +24,6 @@ const headers = {
     "Accept": "application/json"
 };
 
-// sleep 封装，同步环境用
-const sleep = (ms) => {
-    const start = Date.now();
-    console.log(`等待${ms}毫秒 ... ...`) ;
-    while (Date.now() - start < ms) {}
-};
 
 let coldStartResult = "FAIL";
 let snapshotData = null;
@@ -74,19 +68,19 @@ const _d = pad(yesterday.getDate());
 const yesterdayStr = `${_y}-${_m}-${_d}`;
 
 const calories = snapshotData?.latest?.calories?.calories ?? 0;
-const weight = snapshotData?.latest?.weight?.weight ?? raw_avg_weight;
+const weight = snapshotData?.latest?.weight?.weight ?? avg_weight;
 const dateStr = snapshotData?.daily_summary?.date ?? "1987-01-18";
 
 const max_hr = snapshotData?.daily_summary?.heart_rate?.max_hr ?? 0;
 const min_hr = snapshotData?.daily_summary?.heart_rate?.min_hr ?? 0;
 const avg_hr = snapshotData?.daily_summary?.heart_rate?.avg_hr ?? 0;
-let avg_rhr = snapshotData?.daily_summary?.heart_rate?.avg_rhr ?? 0; if (avg_rhr < 10) { avg_rhr = raw_avg_rHR }
+let avg_rhr = snapshotData?.daily_summary?.heart_rate?.avg_rhr ?? 0; if (avg_rhr < 10) { avg_rhr = avg_rHR }
 const abnormal_hr_count = snapshotData?.daily_summary?.heart_rate?.abnormal_hr_count ?? 0;
 
 const sleep_total_duration = snapshotData?.daily_summary?.sleep?.total_duration ?? 0;
-let sleep_max_hr = snapshotData?.daily_summary?.sleep?.max_hr ?? 0; if (sleep_max_hr < 10) { sleep_max_hr = raw_avg_sleepMaxHR }
-let sleep_min_hr = snapshotData?.daily_summary?.sleep?.min_hr ?? 0; if (sleep_min_hr < 10) { sleep_min_hr = raw_avg_sleepAvgHR }
-let sleep_avg_hr = snapshotData?.daily_summary?.sleep?.avg_hr ?? 0; if (sleep_avg_hr < 10) { sleep_avg_hr = raw_avg_sleepAvgHR }
+let sleep_max_hr = snapshotData?.daily_summary?.sleep?.max_hr ?? 0; if (sleep_max_hr < 10) { sleep_max_hr = avg_sleepMaxHR }
+let sleep_min_hr = snapshotData?.daily_summary?.sleep?.min_hr ?? 0; if (sleep_min_hr < 10) { sleep_min_hr = avg_sleepAvgHR }
+let sleep_avg_hr = snapshotData?.daily_summary?.sleep?.avg_hr ?? 0; if (sleep_avg_hr < 10) { sleep_avg_hr = avg_sleepAvgHR }
 
 let sleep_nap = 0;
 const sleep_segment = snapshotData?.daily_summary?.sleep?.segment_details ?? null;
@@ -100,7 +94,12 @@ if (sleep_total_duration > 0 && Array.isArray(sleep_segment)) {
 
 }
 
-const sleep_total_target = (500 + raw_avg_sleepDuration) / 2;
+const rHR_target = (60 + avg_rHR) / 2 ;
+const avgHR_target = (70 + avg_avgHR ) / 2;
+const sleepAvgHR_target = (60 + avg_sleepAvgHR) / 2 ;
+const hr_score = 100 * (rHR_target / avg_rhr + avgHR_target / avg_hr + sleepAvgHR_target / sleep_avg_hr) / 3;
+
+const sleep_total_target = (500 + avg_sleepDuration) / 2;
 const sleep_nap_target = (50 + 0.1 * sleep_total_target + 0.1 * sleep_total_duration) / 3;
 
 let sleep_score = 100;
@@ -126,17 +125,28 @@ sleep_score = sleep_score * sleep_score_weight;
 let sleep_score_xiaomi = snapshotData?.daily_summary?.sleep?.sleep_score ?? 0 ; if (sleep_score_xiaomi < 1) { sleep_score_xiaomi = sleep_score }
 sleep_score = 0.5 * sleep_score + 0.5 * sleep_score_xiaomi;
 
-const rHR_target = (60 + raw_avg_rHR) / 2 ;
-const avgHR_target = 70 ;
-const sleepAvgHR_target = (60 + raw_avg_sleepAvgHR) / 2 ;
-const hr_score = 100 * (rHR_target / avg_rhr + avgHR_target / avg_hr + sleepAvgHR_target / sleep_avg_hr) / 3;
+function Calculate_weightScore(currentWeight, avgWeight, idealWeight = 70) {
+    const target_weight = (idealWeight + avgWeight) / 2;
+    let weightScore = 100 ;
+    if (currentWeight < target_weight) {
+        const delta_weight = target_weight - currentWeight;
+        weightScore = 100 - 100 * 0.5 * delta_weight / target_weight ;
+    } else {
+        const delta_weight = currentWeight - target_weight ;
+        weightScore = 100 - 100 * delta_weight / target_weight ;
+    }
+    return weightScore;
+}
 
-const newAvg_calorie = 0.25 * calories + 0.75 * raw_avg_calorie;
-const newAvg_rHR = 0.25 * avg_rhr + 0.75 * raw_avg_rHR;
-const newAvg_sleepDuration = 0.25 * sleep_total_duration + 0.75 * raw_avg_sleepDuration;
-const newAvg_sleepMaxHR = 0.25 * sleep_max_hr + 0.75 * raw_avg_sleepMaxHR;
-const newAvg_sleepAvgHR = 0.25 * sleep_avg_hr + 0.75 * raw_avg_sleepAvgHR;
-const newAvg_weight = 0.25 * weight + 0.75 * raw_avg_weight;
+const weightScore = Calculate_weightScore(weight, avg_weight) ;
+
+const newAvg_calorie = 0.25 * calories + 0.75 * avg_calorie;
+const newAvg_rHR = 0.25 * avg_rhr + 0.75 * avg_rHR;
+const newAvg_avgHR = 0.25 * avg_hr + 0.75 * avg_avgHR;
+const newAvg_sleepDuration = 0.25 * sleep_total_duration + 0.75 * avg_sleepDuration;
+const newAvg_sleepMaxHR = 0.25 * sleep_max_hr + 0.75 * avg_sleepMaxHR;
+const newAvg_sleepAvgHR = 0.25 * sleep_avg_hr + 0.75 * avg_sleepAvgHR;
+const newAvg_weight = 0.25 * weight + 0.75 * avg_weight;
 
 const rcdType = "实时快照";
 const result = {
@@ -162,8 +172,10 @@ const result = {
     sleep_min_hr,
     sleep_avg_hr,
     hr_score,
+    weightScore,
     newAvg_calorie,
     newAvg_rHR,
+    newAvg_avgHR,
     newAvg_sleepAvgHR,
     newAvg_sleepDuration,
     newAvg_sleepMaxHR,
