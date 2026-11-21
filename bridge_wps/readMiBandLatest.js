@@ -6,6 +6,13 @@ const avg_sleepMaxHR = Number(Context.argv.avg_sleepMaxHR);
 const avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
 const avg_weight = Number(Context.argv.avg_weight);
 
+const IDEAL_weight = Number(Context.argv.ideal_weight);
+const IDEAL_sleepDuration = Number(Context.argv.ideal_sleepDuration);
+const IDEAL_sleepNap = Number(Context.argv.ideal_sleepNap);
+const IDEAL_rHR = Number(Context.argv.ideal_rHR);
+const IDEAL_avgHR = Number(Context.argv.ideal_avgHR);
+const IDEAL_sleepAvgHR = Number(Context.argv.ideal_sleepAvgHR);
+
 const maxTry = 5;
 
 const url = "https://boyuan-health-bridge-5cup.onrender.com/flat-health";
@@ -103,7 +110,7 @@ const newAvg_sleepMaxHR = 0.25 * sleepMaxHR + 0.75 * avg_sleepMaxHR;
 const newAvg_sleepAvgHR = 0.25 * sleepAvgHR + 0.75 * avg_sleepAvgHR;
 const newAvg_weight = 0.25 * weight + 0.75 * avg_weight;
 
-function Calculate_hrScore(rHR, avgHR, sleepAvgHR, avg_rHR, avg_avgHR, avg_sleepAvgHR, ideal_rHR = 60, ideal_avgHR = 80, ideal_sleepAvgHR = 60) {
+function Calculate_hrScore(rHR, avgHR, sleepAvgHR, avg_rHR, avg_avgHR, avg_sleepAvgHR, ideal_rHR = IDEAL_rHR, ideal_avgHR = IDEAL_avgHR, ideal_sleepAvgHR = IDEAL_sleepAvgHR) {
     const target_rHR = (ideal_rHR + avg_rHR) / 2;
     const target_avgHR = (ideal_avgHR + avg_avgHR) / 2;
     const target_sleepAvgHR = (ideal_sleepAvgHR + avg_sleepAvgHR) / 2;
@@ -113,7 +120,7 @@ function Calculate_hrScore(rHR, avgHR, sleepAvgHR, avg_rHR, avg_avgHR, avg_sleep
 const hrScore = Calculate_hrScore(rHR, avgHR, sleepAvgHR, newAvg_rHR, newAvg_avgHR, newAvg_sleepAvgHR);
 
 
-function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sleepDuration, ideal_sleepDuration = 500, ideal_sleepNap = 50) {
+function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sleepDuration, ideal_sleepDuration = IDEAL_sleepDuration, ideal_sleepNap = IDEAL_sleepNap) {
     const target_sleepDuration = (ideal_sleepDuration + avg_sleepDuration) / 2;
     const target_sleepNap = (ideal_sleepNap + 0.1 * target_sleepDuration + 0.1 * sleepDuration) / 3;
     let raw_sleepScore = null;
@@ -142,7 +149,7 @@ function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sle
 const sleepScore = Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, newAvg_sleepDuration);
 
 
-function Calculate_weightScore(currentWeight, avgWeight, idealWeight = 70) {
+function Calculate_weightScore(currentWeight, avgWeight, idealWeight = IDEAL_weight) {
     const target_weight = (idealWeight + avgWeight) / 2;
     let weightScore = 100;
     if (currentWeight < target_weight) {

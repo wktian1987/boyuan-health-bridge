@@ -8,6 +8,13 @@ const avg_sleepMaxHR = Number(Context.argv.avg_sleepMaxHR);
 const avg_sleepAvgHR = Number(Context.argv.avg_sleepAvgHR);
 const avg_weight = Number(Context.argv.avg_weight);
 
+const IDEAL_weight = Number(Context.argv.ideal_weight);
+const IDEAL_sleepDuration = Number(Context.argv.ideal_sleepDuration);
+const IDEAL_sleepNap = Number(Context.argv.ideal_sleepNap);
+const IDEAL_rHR = Number(Context.argv.ideal_rHR);
+const IDEAL_avgHR = Number(Context.argv.ideal_avgHR);
+const IDEAL_sleepAvgHR = Number(Context.argv.ideal_sleepAvgHR);
+
 // const yesterdayStr = '2026-11-19';   // String(Context.argv.yesterdayStr);
 // const nDaysAgoDelete = 30;   // Number(Context.argv.nDaysAgoDelete);
 // const avg_calorie = 898;   // Number(Context.argv.avg_calorie); 
@@ -118,10 +125,10 @@ result.avgHR = data_HR?.avg_hr ?? 0;
 result.rHR = data_HR?.avg_rhr ?? 0; if (result.rHR < 10) { result.rHR = avg_rHR }
 result.abnormalHRcount = data_HR?.abnormal_hr_count ?? 0;
 result.sleepDuration = data_sleep?.total_duration ?? 0;
-result.sleepMaxHR = data_sleep?.max_hr ?? 0; if(result.sleepMaxHR < 10) {result.sleepMaxHR = avg_sleepMaxHR}
-result.sleepMinHR = data_sleep?.min_hr ?? 0; if(result.sleepMinHR < 10) {result.sleepMinHR = avg_sleepAvgHR}
-result.sleepAvgHR = data_sleep?.avg_hr ?? 0; if(result.sleepAvgHR < 10) {result.sleepAvgHR = avg_sleepAvgHR}
-result.xiaomi_sleepScore = data_sleep?.sleep_score ?? 0 ; 
+result.sleepMaxHR = data_sleep?.max_hr ?? 0; if (result.sleepMaxHR < 10) { result.sleepMaxHR = avg_sleepMaxHR }
+result.sleepMinHR = data_sleep?.min_hr ?? 0; if (result.sleepMinHR < 10) { result.sleepMinHR = avg_sleepAvgHR }
+result.sleepAvgHR = data_sleep?.avg_hr ?? 0; if (result.sleepAvgHR < 10) { result.sleepAvgHR = avg_sleepAvgHR }
+result.xiaomi_sleepScore = data_sleep?.sleep_score ?? 0;
 
 
 const sleep_segment = data_sleep?.segment_details ?? null;
@@ -146,20 +153,19 @@ result.newAvg_sleepAvgHR = 0.25 * result.sleepAvgHR + 0.75 * avg_sleepAvgHR;
 result.newAvg_weight = 0.25 * result.weight + 0.75 * avg_weight;
 
 
-function Calculate_hrScore(rHR, avgHR, sleepAvgHR, avg_rHR, avg_avgHR, avg_sleepAvgHR, ideal_rHR = 60, ideal_avgHR = 80, ideal_sleepAvgHR = 60) {
+function Calculate_hrScore(rHR, avgHR, sleepAvgHR, avg_rHR, avg_avgHR, avg_sleepAvgHR, ideal_rHR = IDEAL_rHR, ideal_avgHR = IDEAL_avgHR, ideal_sleepAvgHR = IDEAL_sleepAvgHR) {
   const target_rHR = (ideal_rHR + avg_rHR) / 2;
   const target_avgHR = (ideal_avgHR + avg_avgHR) / 2;
   const target_sleepAvgHR = (ideal_sleepAvgHR + avg_sleepAvgHR) / 2;
   const hrScore = 100 * (target_rHR / rHR + target_avgHR / avgHR + target_sleepAvgHR / sleepAvgHR) / 3;
-  return hrScore ;
+  return hrScore;
 }
-result.hrScore = Calculate_hrScore(result.rHR, result.avgHR, result.sleepAvgHR, result.newAvg_rHR, result.newAvg_avgHR, result.newAvg_sleepAvgHR) ;
+result.hrScore = Calculate_hrScore(result.rHR, result.avgHR, result.sleepAvgHR, result.newAvg_rHR, result.newAvg_avgHR, result.newAvg_sleepAvgHR);
 
-
-function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sleepDuration, ideal_sleepDuration = 500, ideal_sleepNap = 50){
+function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sleepDuration, ideal_sleepDuration = IDEAL_sleepDuration, ideal_sleepNap = IDEAL_sleepNap) {
   const target_sleepDuration = (ideal_sleepDuration + avg_sleepDuration) / 2;
   const target_sleepNap = (ideal_sleepNap + 0.1 * target_sleepDuration + 0.1 * sleepDuration) / 3;
-  let raw_sleepScore = null ;
+  let raw_sleepScore = null;
   if (sleepDuration < target_sleepDuration) {
     raw_sleepScore = 100 * sleepDuration / target_sleepDuration;
   } else {
@@ -185,20 +191,20 @@ function Calulate_sleepScore(sleepDuration, sleepNap, xiaomi_sleepScore, avg_sle
 result.sleepScore = Calulate_sleepScore(result.sleepDuration, result.sleepNap, result.xiaomi_sleepScore, result.newAvg_sleepDuration);
 
 
-function Calculate_weightScore(currentWeight, avgWeight, idealWeight = 70) {
-    const target_weight = (idealWeight + avgWeight) / 2;
-    let weightScore = 100 ;
-    if (currentWeight < target_weight) {
-        const delta_weight = target_weight - currentWeight;
-        weightScore = 100 - 100 * 0.5 * delta_weight / 5 ;
-    } else {
-        const delta_weight = currentWeight - target_weight ;
-        weightScore = 100 - 100 * delta_weight / 5 ;
-    }
-    return weightScore;
+function Calculate_weightScore(currentWeight, avgWeight, idealWeight = IDEAL_weight) {
+  const target_weight = (idealWeight + avgWeight) / 2;
+  let weightScore = 100;
+  if (currentWeight < target_weight) {
+    const delta_weight = target_weight - currentWeight;
+    weightScore = 100 - 100 * 0.5 * delta_weight / 5;
+  } else {
+    const delta_weight = currentWeight - target_weight;
+    weightScore = 100 - 100 * delta_weight / 5;
+  }
+  return weightScore;
 }
 
-result.weightScore = Calculate_weightScore(result.weight, result.newAvg_weight) ;
+result.weightScore = Calculate_weightScore(result.weight, result.newAvg_weight);
 
 result.resultStr = JSON.stringify(result);
 console.log("result: " + result.resultStr);
