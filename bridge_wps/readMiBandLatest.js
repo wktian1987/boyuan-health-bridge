@@ -74,6 +74,12 @@ const _m = pad(yesterday.getMonth() + 1);
 const _d = pad(yesterday.getDate());
 const yesterdayStr = `${_y}-${_m}-${_d}`;
 
+function datatimeToTimestamp(datetimeStr) {
+  const dt = new Date(datetimeStr + "+08:00");
+  return Math.floor(dt.getTime() / 1000);
+}
+const yesterdayEndTimestamp = datatimeToTimestamp(yesterdayStr + " 23:59:59");
+
 let calorie = snapshotData?.latest?.calories?.calories ?? 0; if (latestHour < 1) { calorie = 0 }
 const weight = snapshotData?.latest?.weight?.weight ?? avg_weight;
 const dateStr = snapshotData?.daily_summary?.date ?? "1987-01-18";
@@ -173,6 +179,7 @@ const result = {
     latestHour,
     timeBucket,
     yesterdayStr,
+    yesterdayEndTimestamp,
     calorie,
     weight,
     maxHR,
